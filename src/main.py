@@ -32,3 +32,9 @@ def get_progress_item(item_id: int):
         if item["id"] == item_id:
             return item
     return {"error": "Item not found"}
+
+
+@app.get("/progress/filter/{status}")
+def filter_progress(status: str):
+    filtered = [item for item in progress_items if item["status"] == status]
+    return {"progress": filtered}
