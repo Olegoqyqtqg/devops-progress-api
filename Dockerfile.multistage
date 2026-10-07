@@ -1,0 +1,50 @@
+# ═══════════════════════════════════════════════
+# Этап 1: builder — установка зависимостей
+# ═══════════════════════════════════════════════
+FROM python:3.11 AS builder
+
+WORKDIR /app
+
+# Прокси для сборки
+ARG HTTP_PROXY
+ARG HTTPS_PROXY
+ENV HTTP_PROXY=${HTTP_PROXY} \
+    HTTPS_PROXY=${HTTPS_PROXY}
+
+# Копируем только requirements.txt (для кэша)
+COPY requirements.txt .
+
+# Устанавливаем зависимости в /root/.local
+# --user — ставит в пользовательскую папку, а не в систему
+RUN pip install --no-cache-dir --user -r requirements.txt
+
+
+# ═══════════════════════════════════════════════
+# Этап 2: runtime — минимальный финальный образ
+# ═══════════════════════════════════════════════
+FROM python:3.11-slim
+
+LABEL maintainer="oleg"
+LABEL description="DevOps Progress API — FastAPI (multi-stage build)"
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PATH=/home/appuser/.local/bin:$PATH
+
+WORKDIR /app
+
+# Копируем установленные пакеты из builder-этапа
+COPY --from=builder /root/.local /home/appuser/.local
+
+# Копируем код
+COPY src/ ./src/
+
+# Создаём непривилегированного пользователя
+RUN useradd -m -u 1000 appuser && \
+    chown -R appuser:appuser /app /home/appuser
+
+USER appuser
+
+EXPOSE 8000
+
+CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
