@@ -1,0 +1,51 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        HTTP_PROXY: ${HTTP_PROXY}
+        HTTPS_PROXY: ${HTTPS_PROXY}
+    container_name: progress-api
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://appuser:secret@db:5432/progress_db
+    
+    # Ждём, пока база данных не станет полностью готовой (healthy)
+    depends_on:
+      db:
+        condition: service_healthy
+        
+    # Проверка, что само API живо и отвечает
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+      
+    restart: unless-stopped
+
+  db:
+    image: postgres:16
+    container_name: progress-db
+    environment:
+      - POSTGRES_USER=appuser
+      - POSTGRES_PASSWORD=secret
+      - POSTGRES_DB=progress_db
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      
+    # Проверка, что Postgres принимает подключения
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U appuser -d progress_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+      
+    restart: unless-stopped
+
+volumes:
+  pgdata:
