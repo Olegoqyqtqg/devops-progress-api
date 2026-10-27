@@ -10,7 +10,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://appuser:secret@db:5432/progress_db
+      - DATABASE_URL=${DATABASE_URL}
     
     # Ждём, пока база данных не станет полностью готовой (healthy)
     depends_on:
@@ -19,7 +19,7 @@ services:
         
     # Проверка, что само API живо и отвечает
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -31,9 +31,9 @@ services:
     image: postgres:16
     container_name: progress-db
     environment:
-      - POSTGRES_USER=appuser
-      - POSTGRES_PASSWORD=secret
-      - POSTGRES_DB=progress_db
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORDP=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
     volumes:
       - pgdata:/var/lib/postgresql/data
       
